@@ -2,6 +2,10 @@
 
 有形象、有情绪、有声音、有记忆的 AI 女友。本地运行，数据不出本机。
 
+> **形象来源**：[Wallpaper Engine（壁纸引擎）](https://store.steampowered.com/app/431960/Wallpaper_Engine/) 创意工坊作品
+> [紫发少女动态壁纸（ID: 3810650535）](https://steamcommunity.com/sharedfiles/filedetails/?id=3810650535)，作者 **FRAC_LAB**。
+> 素材版权归原作者所有，仅限本地个人使用，禁止二次分发或商用。
+
 ## 功能
 
 - **视频形象**：预渲染动态形象，支持衣橱换装（站/坐/躺多姿态）
@@ -40,10 +44,11 @@ python -m venv .venv
 
 ## 形象资源来源与版权
 
-`assets/` 目录**不在本仓库中**。形象素材来自 Wallpaper Engine 创意工坊：
+`assets/` 目录**不在本仓库中**。形象素材来自 Wallpaper Engine（壁纸引擎）创意工坊：
 
-- 作品：紫发少女（多穿搭动态壁纸）
+- 作品：[紫发少女动态壁纸](https://steamcommunity.com/sharedfiles/filedetails/?id=3810650535)
 - 作者：**FRAC_LAB**
+- 平台：[Wallpaper Engine](https://store.steampowered.com/app/431960/Wallpaper_Engine/)（Steam 售价约 18 元，订阅即下载）
 - 工坊 ID：`3810650535`（订阅后位于 `steamapps/workshop/content/431960/3810650535`）
 
 素材版权归原作者所有，仅限本地个人使用，**禁止二次分发或商用**。获取方式：Wallpaper Engine 订阅该作品后，把 `media/1080p`、`images`、`catalog.js` 复制到项目 `assets/` 目录。
