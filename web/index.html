@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>紫曦 · 虚拟女友</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 形象层：视频渲染 -->
+  <div id="stageWrap">
+    <video id="stage" muted playsinline></video>
+    <div id="edgeLight"></div>
+    <div id="speakHint" class="hidden">♪</div>
+  </div>
+
+  <!-- 状态条 -->
+  <div id="statusBar">
+    <span id="girlName">紫曦</span>
+    <span id="mood">心情：--</span>
+    <span id="affection">好感度：--</span>
+  </div>
+
+  <!-- 聊天面板 -->
+  <div id="chatPanel">
+    <div id="messages"></div>
+    <div id="inputRow">
+      <button id="micBtn" title="语音输入">🎤</button>
+      <input id="textInput" type="text" placeholder="和她说点什么…" autocomplete="off">
+      <button id="sendBtn">发送</button>
+      <button id="wardrobeBtn" title="衣橱">👗</button>
+    </div>
+  </div>
+
+  <!-- 衣橱抽屉 -->
+  <div id="wardrobe" class="hidden"></div>
+
+  <script src="/assets/catalog.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

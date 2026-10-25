@@ -1,0 +1,17 @@
+# 密钥与本地配置
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# 运行时数据
+server/data.db
+logs/
+
+# 形象素材（壁纸引擎资源，体积大且有版权，不入库）
+assets/
+
+# IDE 产物
+.trae-html-share-packages/
