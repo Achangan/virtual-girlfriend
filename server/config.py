@@ -14,6 +14,9 @@ load_dotenv(BASE_DIR / ".env")
 
 
 class Settings:
+    # LLM 后端：local=WSL 本地 QLoRA 模型（start_local_llm.bat 启动，失败自动回退 API）；api=DeepSeek 等在线接口
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "api")
+    LLM_LOCAL_URL = os.getenv("LLM_LOCAL_URL", "http://127.0.0.1:8100/v1")
     LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
     LLM_API_KEY = os.getenv("LLM_API_KEY", "")
     LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
