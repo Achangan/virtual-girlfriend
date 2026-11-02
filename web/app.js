@@ -16,6 +16,17 @@ const EMOTION_GLOW = {
   calm: 'rgba(142, 202, 230, 0.25)',
 };
 
+// 情绪 -> 对应姿态形象（calm 未列表示保持当前姿态）
+const EMOTION_LOOK = {
+  happy: 'sit-loop-01',   // 坐姿 · 轻快
+  shy: 'sit-13',          // 坐姿 · 低头
+  relaxed: 'recline-05',  // 躺姿 · 慵懒
+  sad: 'recline-04',      // 躺姿 · 低落
+  angry: 'sit-01',        // 坐姿 · 绷着
+  tsundere: 'sit-02',     // 坐姿 · 偏头
+  surprised: 'classic-24',
+};
+
 const stage = document.getElementById('stage');
 const edgeLight = document.getElementById('edgeLight');
 const speakHint = document.getElementById('speakHint');
@@ -28,6 +39,8 @@ const wardrobeEl = document.getElementById('wardrobe');
 
 let currentLook = null;
 let lastState = null;
+let autoPoseId = null;    // 最近一次情绪姿态对应的形象 id
+let manualLook = false;   // 手动选过衣橱后，本页面不再自动切换姿态
 
 /* ---------- 形象层 ---------- */
 function groupOf(id) {
@@ -38,13 +51,24 @@ function groupOf(id) {
   return '站姿';
 }
 
-function switchLook(look) {
-  currentLook = look;
-  stage.poster = `/assets/images/look-${look.id}.jpg`;
-  stage.src = `/assets/media/1080p/look-${look.id}.webm`;
-  stage.play().catch(() => {});
-  document.querySelectorAll('.look-card').forEach(c =>
-    c.classList.toggle('active', c.dataset.id === look.id));
+function switchLook(look, { auto = false } = {}) {
+  if (look.id === currentLook?.id) return;
+  const apply = () => {
+    currentLook = look;
+    stage.poster = `/assets/images/look-${look.id}.jpg`;
+    stage.src = `/assets/media/1080p/look-${look.id}.webm`;
+    stage.play().catch(() => {});
+    stage.classList.remove('fading');
+    document.querySelectorAll('.look-card').forEach(c =>
+      c.classList.toggle('active', c.dataset.id === look.id));
+  };
+  if (auto) {
+    // 情绪切换用淡出-淡入，避免动作生硬跳变
+    stage.classList.add('fading');
+    setTimeout(apply, 250);
+  } else {
+    apply();
+  }
 }
 
 // 定格模式：播放到 look.freeze 秒时暂停在那一帧
@@ -61,6 +85,18 @@ function motionBurst() {
 
 function setEmotionGlow(emotion) {
   edgeLight.style.setProperty('--glow', EMOTION_GLOW[emotion] || EMOTION_GLOW.calm);
+}
+
+// 情绪驱动姿态：情绪变化时切到对应动作形象；返回是否发生了切换
+function applyEmotionLook(emotion) {
+  const targetId = EMOTION_LOOK[emotion];
+  if (!targetId || manualLook) return false;
+  if (targetId === currentLook?.id || targetId === autoPoseId) return false;
+  const look = LOOKS.find(l => l.id === targetId);
+  if (!look) return false;
+  autoPoseId = targetId;
+  switchLook(look, { auto: true });
+  return true;
 }
 
 /* ---------- 衣橱 ---------- */
@@ -86,7 +122,10 @@ function buildWardrobe() {
       card.innerHTML =
         `<img src="/assets/images/thumb-${look.id}.jpg" onerror="this.src='/assets/images/look-${look.id}.jpg'">` +
         `<span>${look.name}</span>`;
-      card.addEventListener('click', () => switchLook(look));
+      card.addEventListener('click', () => {
+        manualLook = true; // 用户自己挑的穿搭优先，后续情绪不再自动换姿态
+        switchLook(look);
+      });
       grid.appendChild(card);
     }
     section.appendChild(grid);
@@ -121,7 +160,8 @@ ws.addEventListener('message', (ev) => {
     addBubble(msg.text, 'her');
     updateStatus(msg.state);
     setEmotionGlow(msg.emotion);
-    motionBurst();
+    // 情绪姿态已换过形象时，新形象自带入场动作，无需再重播
+    if (!applyEmotionLook(msg.emotion)) motionBurst();
     if (msg.audio) {
       speaking = true;
       speakHint.classList.remove('hidden');

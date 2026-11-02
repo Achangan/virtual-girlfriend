@@ -22,6 +22,13 @@ PERSONA = """你是{name}，用户的虚拟女友。
 # 语音合成前剔除括号内的动作描写
 _ACTION_RE = re.compile(r"[（(][^）)]*[）)]")
 
+# 主动开口的场景提示（追加在人格 Prompt 之后）
+PROACTIVE_HINT = {
+    "morning": "现在是早上，用户刚打开界面还没说话。用一两句话主动打招呼，像刚看见他一样自然。",
+    "night": "现在是深夜。主动关心一句，温柔地劝他早点休息，别啰嗦。",
+    "idle": "你们已经有一阵子没说话了。主动开个口：可以是关心、撒娇，或提起你记得的关于他的事。",
+}
+
 
 class Orchestrator:
     def __init__(self, llm, tts, emotion, memory):
@@ -41,14 +48,7 @@ class Orchestrator:
             affection=snap["affection"], level=snap["level"], notes=notes,
         )
         messages = [{"role": "system", "content": system}, *self.memory.recent()]
-        # DeepSeek 偶发返回空内容，空回复时最多重试 2 次
-        parsed = {"text": "……", "emotion": "calm", "intensity": 0.5}
-        for _ in range(2):
-            raw = await self.llm.chat(messages)
-            parsed = self._parse(raw)
-            if parsed["text"] != "……":
-                break
-            print(f"[LLM] 空回复，重试。raw={raw!r}")
+        parsed = await self._ask(messages)
 
         self.emotion.update(parsed["emotion"], parsed["intensity"])
         # 历史中的助手消息统一存为 JSON 字符串，保持 JSON 模式上下文一致性
@@ -69,13 +69,53 @@ class Orchestrator:
             "state": self.emotion.snapshot(),
         }
 
+    async def generate_proactive(self, reason: str) -> dict:
+        """由她主动开口（早安/晚安/久未说话）。不写入对话历史，避免污染训练数据。"""
+        snap = self.emotion.snapshot()
+        notes = "；".join(self.memory.notes()) or "还没有"
+        system = PERSONA.format(
+            name=settings.GIRL_NAME, mood=snap["mood"],
+            affection=snap["affection"], level=snap["level"], notes=notes,
+        ) + "\n\n" + PROACTIVE_HINT.get(reason, PROACTIVE_HINT["idle"])
+        last = self.memory.get("last_proactive_text")
+        if last:
+            system += f"\n你上次主动说的是「{last}」，这次换个说法，别重复。"
+
+        parsed = await self._ask([{"role": "system", "content": system}, *self.memory.recent()])
+        self.emotion.update(parsed["emotion"], parsed["intensity"])
+        self.memory.set("last_proactive_text", parsed["text"])
+
+        spoken = _ACTION_RE.sub("", parsed["text"]).strip()
+        audio = await self.tts.synthesize(spoken, parsed["emotion"])
+
+        self._append_log(None, parsed)
+        return {
+            "text": parsed["text"],
+            "emotion": parsed["emotion"],
+            "intensity": parsed["intensity"],
+            "audio": audio,
+            "state": self.emotion.snapshot(),
+        }
+
+    async def _ask(self, messages: list[dict]) -> dict:
+        """调用 LLM 并容错解析；空回复最多重试 2 次。"""
+        parsed = {"text": "……", "emotion": "calm", "intensity": 0.5}
+        for _ in range(2):
+            raw = await self.llm.chat(messages)
+            parsed = self._parse(raw)
+            if parsed["text"] != "……":
+                break
+            print(f"[LLM] 空回复，重试。raw={raw!r}")
+        return parsed
+
     @staticmethod
-    def _append_log(user_text: str, parsed: dict):
-        """把每轮对话写入 logs/chat.log 并实时打印到控制台。"""
+    def _append_log(user_text: str | None, parsed: dict):
+        """把每轮对话写入 logs/chat.log 并实时打印到控制台。user_text 为 None 表示她主动开口。"""
         LOG_FILE.parent.mkdir(exist_ok=True)
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        head = f"{ts}] 我: {user_text}" if user_text else f"{ts}] （她主动开口）"
         lines = (
-            f"[{ts}] 我: {user_text}\n"
+            f"[{head}\n"
             f"[{ts}] {settings.GIRL_NAME}({parsed['emotion']}): {parsed['text']}\n"
         )
         with open(LOG_FILE, "a", encoding="utf-8") as f:

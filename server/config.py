@@ -34,6 +34,14 @@ class Settings:
     # 语音识别（faster-whisper 本地模型）
     ASR_MODEL = os.getenv("ASR_MODEL", "small")
 
+    # 主动消息：早安/晚安/久未说话时她主动开口（需浏览器保持打开）
+    PROACTIVE_ENABLED = os.getenv("PROACTIVE_ENABLED", "1") == "1"
+    PROACTIVE_IDLE_MIN = int(os.getenv("PROACTIVE_IDLE_MIN", "25"))
+    PROACTIVE_COOLDOWN_MIN = int(os.getenv("PROACTIVE_COOLDOWN_MIN", "40"))
+    PROACTIVE_DAILY_MAX = int(os.getenv("PROACTIVE_DAILY_MAX", "4"))
+    PROACTIVE_TICK = int(os.getenv("PROACTIVE_TICK", "60"))
+
+
     GIRL_NAME = os.getenv("GIRL_NAME", "紫曦")
     HOST = os.getenv("HOST", "127.0.0.1")
     PORT = int(os.getenv("PORT", "8000"))

@@ -19,6 +19,7 @@ from emotion.engine import EmotionEngine
 from llm.client import LLMClient
 from memory.store import MemoryStore
 from orchestrator import Orchestrator
+from proactive import ProactiveManager
 from tts.client import TTSClient
 
 app = FastAPI(title="Virtual Girlfriend")
@@ -28,11 +29,18 @@ emotion = EmotionEngine(memory)
 llm = LLMClient()
 tts = TTSClient()
 orchestrator = Orchestrator(llm, tts, emotion, memory)
+proactive = ProactiveManager(orchestrator, memory)
+
+
+@app.on_event("startup")
+async def _startup():
+    proactive.start()
 
 
 @app.websocket("/ws")
 async def chat_ws(websocket: WebSocket):
     await websocket.accept()
+    proactive.add_client(websocket)
     # 连接建立即推送一次状态，供前端初始化心情/好感度显示
     await websocket.send_text(json.dumps(
         {"type": "state", "state": emotion.snapshot()}, ensure_ascii=False))
@@ -40,6 +48,7 @@ async def chat_ws(websocket: WebSocket):
         while True:
             msg = json.loads(await websocket.receive_text())
             if msg.get("type") == "chat" and msg.get("text", "").strip():
+                proactive.on_user_message()
                 reply = await orchestrator.handle_chat(msg["text"].strip())
                 await websocket.send_text(
                     json.dumps({"type": "reply", **reply}, ensure_ascii=False))
@@ -62,6 +71,7 @@ async def chat_ws(websocket: WebSocket):
                 if not heard:
                     continue
                 print(f"[ASR] 听到: {heard}", flush=True)
+                proactive.on_user_message()
                 reply = await orchestrator.handle_chat(heard)
                 await websocket.send_text(json.dumps(
                     {"type": "reply", **reply}, ensure_ascii=False))
@@ -69,6 +79,8 @@ async def chat_ws(websocket: WebSocket):
         pass
     except json.JSONDecodeError:
         await websocket.close(code=1003)
+    finally:
+        proactive.remove_client(websocket)
 
 
 app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
